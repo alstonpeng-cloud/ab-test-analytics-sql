@@ -16,6 +16,8 @@ README_PATH = PROJECT_ROOT / "README.md"
 RESULTS_START = "<!-- AUTO_RESULTS:START -->"
 RESULTS_END = "<!-- AUTO_RESULTS:END -->"
 Z_975 = 1.959963984540054
+# CSV 序列化统一保留的有效数字位数，见 _round_for_csv 的设计依据。
+CSV_SIGNIFICANT_DIGITS = 12
 
 METRIC_LABELS = {
     "activation_24h": "24 小时教程完成率",
@@ -262,6 +264,19 @@ def _update_readme(results: dict) -> None:
     _write_text(README_PATH, updated)
 
 
+def _round_for_csv(value):
+    """把浮点值固定到 CSV_SIGNIFICANT_DIGITS 位有效数字再序列化。
+
+    设计依据：math.erfc 在 Python 3.11 与 3.12+ 的实现存在第 16 位有效数字级别的
+    差异（如 p=2.993895522214825e-06 vs 2.9938955222148244e-06），全精度写盘会让
+    CI 在不同解释器版本下重算出不同字节。12 位有效数字既远高于报告展示精度
+    （README 为 4~5 位），又覆盖所有跨版本浮点抖动，保证 3.11+ 输出完全一致。
+    """
+    if isinstance(value, float):
+        return float(f"{value:.{CSV_SIGNIFICANT_DIGITS - 1}g}")
+    return value
+
+
 def _write_metrics_csv(results: dict) -> None:
     fieldnames = [
         "metric_name",
@@ -315,7 +330,9 @@ def _write_metrics_csv(results: dict) -> None:
             file, fieldnames=fieldnames, lineterminator="\n", extrasaction="ignore"
         )
         writer.writeheader()
-        writer.writerows(rows)
+        writer.writerows(
+            {key: _round_for_csv(value) for key, value in row.items()} for row in rows
+        )
 
 
 def run() -> dict:
