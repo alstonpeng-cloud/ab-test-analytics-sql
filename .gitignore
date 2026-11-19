@@ -1,0 +1,10 @@
+/build/
+*.sqlite
+*.sqlite3
+__pycache__/
+*.py[cod]
+.DS_Store
+Thumbs.db
+
+# 个人简历不入公开仓库
+Peng-Haocheng-Data-Science-Intern-Resume-EN.docx
